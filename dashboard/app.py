@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
+
 # =====================================================
 # 1. PAGE CONFIGURATION
 # =====================================================
@@ -16,6 +17,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
 
 # =====================================================
 # 2. CUSTOM CSS - MODERN DARK THEME
@@ -138,7 +140,7 @@ st.markdown("""
     }
 
     hr {
-        border-color: #26364D;
+        border-color: #263244;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -195,10 +197,17 @@ weather_map = {
 }
 
 month_map = {
-    1: "January", 2: "February", 3: "March",
-    4: "April", 5: "May", 6: "June",
-    7: "July", 8: "August", 9: "September",
-    10: "October", 11: "November",
+    1: "January",
+    2: "February",
+    3: "March",
+    4: "April",
+    5: "May",
+    6: "June",
+    7: "July",
+    8: "August",
+    9: "September",
+    10: "October",
+    11: "November",
     12: "December"
 }
 
@@ -209,6 +218,7 @@ for df in [day_df, hour_df]:
     df["month_year"] = df["dteday"].dt.strftime("%b %Y")
 
 day_df["weather_name"] = day_df["weathersit"].map(weather_map)
+hour_df["weather_name"] = hour_df["weathersit"].map(weather_map)
 
 hour_df["day_type"] = hour_df["workingday"].map({
     0: "Non-Working Day",
@@ -273,6 +283,11 @@ with st.sidebar:
 
     st.divider()
 
+    st.caption(
+        "Weather filter is applied specifically "
+        "to hourly weather analysis."
+    )
+
     st.caption("Dataset: Bike Sharing Dataset")
     st.caption("Washington D.C. | 2011–2012")
 
@@ -281,22 +296,37 @@ with st.sidebar:
 # 8. FILTER DATA
 # =====================================================
 
+# Filter dataset harian.
+# Filter cuaca tidak diterapkan pada dataset harian.
+# Analisis cuaca menggunakan dataset per jam.
+
 filtered_day = day_df[
     (day_df["year"].isin(years)) &
     (day_df["season_name"].isin(seasons)) &
-    (day_df["month_name"].isin(months)) &
-    (day_df["weather_name"].isin(weathers))
+    (day_df["month_name"].isin(months))
 ].copy()
+
+
+# Filter dataset per jam.
+# Filter cuaca hanya diterapkan pada dataset ini.
 
 filtered_hour = hour_df[
     (hour_df["year"].isin(years)) &
     (hour_df["season_name"].isin(seasons)) &
     (hour_df["month_name"].isin(months)) &
-    (hour_df["weathersit"].map(weather_map).isin(weathers))
+    (hour_df["weather_name"].isin(weathers))
 ].copy()
 
-if filtered_day.empty or filtered_hour.empty:
-    st.warning("Tidak ada data untuk kombinasi filter yang dipilih.")
+
+# Validasi dataset harian.
+# Dataset per jam boleh kosong karena filter cuaca.
+
+if filtered_day.empty:
+    st.warning(
+        "Tidak ada data harian untuk kombinasi tahun, "
+        "musim, dan bulan yang dipilih. "
+        "Silakan ubah filter tersebut."
+    )
     st.stop()
 
 
@@ -310,7 +340,7 @@ st.markdown(
 )
 
 st.markdown(
-    '<div class="subtitle"> '
+    '<div class="subtitle">'
     'Explore rental patterns, user behavior, weather impact, '
     'and seasonal demand | Washington D.C. 2011–2012'
     '</div>',
@@ -343,6 +373,7 @@ st.markdown("### Performance Overview")
 
 k1, k2, k3, k4 = st.columns(4)
 
+
 def metric_card(column, label, value, note):
     with column:
         st.markdown(f"""
@@ -355,25 +386,29 @@ def metric_card(column, label, value, note):
 
 
 metric_card(
-    k1, "Total Rentals",
+    k1,
+    "Total Rentals",
     f"{total_rentals:,.0f}",
     "Total bicycle rental transactions"
 )
 
 metric_card(
-    k2, "Casual Users",
+    k2,
+    "Casual Users",
     f"{total_casual:,.0f}",
     f"{casual_percentage:.1f}% of total rentals"
 )
 
 metric_card(
-    k3, "Registered Users",
+    k3,
+    "Registered Users",
     f"{total_registered:,.0f}",
     f"{registered_percentage:.1f}% of total rentals"
 )
 
 metric_card(
-    k4, "Daily Average",
+    k4,
+    "Daily Average",
     f"{average_daily:,.0f}",
     "Average rentals per day"
 )
@@ -399,8 +434,13 @@ st.markdown(
 )
 
 monthly = (
-    filtered_day.groupby(["year", "mnth"], as_index=False)
-    .agg(average_rentals=("cnt", "mean"))
+    filtered_day.groupby(
+        ["year", "mnth"],
+        as_index=False
+    )
+    .agg(
+        average_rentals=("cnt", "mean")
+    )
 )
 
 monthly["month_name"] = monthly["mnth"].map(month_map)
@@ -420,7 +460,8 @@ fig_monthly = px.line(
     markers=True,
     template=CHART_TEMPLATE,
     color_discrete_sequence=[
-        COLORS["blue"], COLORS["purple"]
+        COLORS["blue"],
+        COLORS["purple"]
     ],
     labels={
         "date": "Month",
@@ -436,9 +477,13 @@ fig_monthly.update_layout(
     margin=dict(l=20, r=20, t=30, b=20)
 )
 
-st.plotly_chart(fig_monthly, use_container_width=True)
+st.plotly_chart(
+    fig_monthly,
+    use_container_width=True
+)
 
 if not monthly.empty:
+
     highest_month = monthly.loc[
         monthly["average_rentals"].idxmax()
     ]
@@ -477,43 +522,50 @@ st.markdown(
 
 hourly = (
     filtered_hour.groupby(
-        ["hr", "day_type"], as_index=False
+        ["hr", "day_type"],
+        as_index=False
     )
-    .agg(average_rentals=("cnt", "mean"))
+    .agg(
+        average_rentals=("cnt", "mean")
+    )
 )
-
-fig_hourly = px.line(
-    hourly,
-    x="hr",
-    y="average_rentals",
-    color="day_type",
-    markers=True,
-    template=CHART_TEMPLATE,
-    color_discrete_map={
-        "Working Day": COLORS["blue"],
-        "Non-Working Day": COLORS["orange"]
-    },
-    labels={
-        "hr": "Hour of Day",
-        "average_rentals": "Average Rentals",
-        "day_type": "Day Type"
-    }
-)
-
-fig_hourly.update_xaxes(
-    tickmode="linear",
-    dtick=1
-)
-
-fig_hourly.update_layout(
-    height=390,
-    hovermode="x unified",
-    margin=dict(l=20, r=20, t=30, b=20)
-)
-
-st.plotly_chart(fig_hourly, use_container_width=True)
 
 if not hourly.empty:
+
+    fig_hourly = px.line(
+        hourly,
+        x="hr",
+        y="average_rentals",
+        color="day_type",
+        markers=True,
+        template=CHART_TEMPLATE,
+        color_discrete_map={
+            "Working Day": COLORS["blue"],
+            "Non-Working Day": COLORS["orange"]
+        },
+        labels={
+            "hr": "Hour of Day",
+            "average_rentals": "Average Rentals",
+            "day_type": "Day Type"
+        }
+    )
+
+    fig_hourly.update_xaxes(
+        tickmode="linear",
+        dtick=1
+    )
+
+    fig_hourly.update_layout(
+        height=390,
+        hovermode="x unified",
+        margin=dict(l=20, r=20, t=30, b=20)
+    )
+
+    st.plotly_chart(
+        fig_hourly,
+        use_container_width=True
+    )
+
     peak_hour = hourly.loc[
         hourly["average_rentals"].idxmax()
     ]
@@ -533,6 +585,13 @@ if not hourly.empty:
         unsafe_allow_html=True
     )
 
+else:
+
+    st.info(
+        "Tidak ada data per jam untuk filter yang dipilih. "
+        "Silakan ubah filter kondisi cuaca."
+    )
+
 
 # =====================================================
 # 13. BUSINESS QUESTION 3
@@ -546,47 +605,118 @@ st.markdown(
 
 st.markdown(
     '<div class="section-description">'
-    'How do weather conditions relate to bicycle rental demand?'
+    'How do weather conditions relate to hourly bicycle rental demand?'
     '</div>',
     unsafe_allow_html=True
 )
 
-weather = (
-    filtered_day.groupby("weather_name", as_index=False)
-    .agg(average_rentals=("cnt", "mean"))
-    .sort_values("average_rentals", ascending=True)
-)
+if filtered_hour.empty:
 
-fig_weather = px.bar(
-    weather,
-    x="average_rentals",
-    y="weather_name",
-    orientation="h",
-    text="average_rentals",
-    template=CHART_TEMPLATE,
-    color="average_rentals",
-    color_continuous_scale=["#164E63", "#22D3EE"],
-    labels={
-        "average_rentals": "Average Daily Rentals",
-        "weather_name": "Weather Condition"
-    }
-)
+    st.warning(
+        "Tidak ada data per jam untuk kombinasi filter yang dipilih. "
+        "Silakan ubah filter tahun, musim, bulan, atau kondisi cuaca."
+    )
 
-fig_weather.update_traces(
-    texttemplate="%{text:,.0f}",
-    textposition="outside"
-)
+else:
 
-fig_weather.update_layout(
-    height=350,
-    showlegend=False,
-    coloraxis_showscale=False,
-    margin=dict(l=20, r=60, t=30, b=20)
-)
+    # Menghitung rata-rata penyewaan dan jumlah observasi.
+    weather = (
+        filtered_hour.groupby(
+            ["weathersit", "weather_name"],
+            as_index=False
+        )
+        .agg(
+            average_rentals=("cnt", "mean"),
+            observation_count=("cnt", "count")
+        )
+        .sort_values("average_rentals", ascending=True)
+    )
 
-st.plotly_chart(fig_weather, use_container_width=True)
+    # Visualisasi rata-rata penyewaan per jam berdasarkan cuaca.
+    fig_weather = px.bar(
+        weather,
+        x="average_rentals",
+        y="weather_name",
+        orientation="h",
+        text="average_rentals",
+        template=CHART_TEMPLATE,
+        color="average_rentals",
+        color_continuous_scale=[
+            "#164E63",
+            "#22D3EE"
+        ],
+        labels={
+            "average_rentals": "Average Hourly Rentals",
+            "weather_name": "Weather Condition"
+        },
+        hover_data={
+            "observation_count": True,
+            "average_rentals": ":.2f"
+        }
+    )
 
-if not weather.empty:
+    fig_weather.update_traces(
+        texttemplate="%{text:,.1f}",
+        textposition="outside"
+    )
+
+    fig_weather.update_layout(
+        height=400,
+        showlegend=False,
+        coloraxis_showscale=False,
+        margin=dict(l=20, r=60, t=30, b=20)
+    )
+
+    st.plotly_chart(
+        fig_weather,
+        use_container_width=True
+    )
+
+    # Tabel jumlah observasi dan rata-rata penyewaan.
+    st.markdown("#### Weather Observation Details")
+
+    weather_table = weather[
+        [
+            "weather_name",
+            "observation_count",
+            "average_rentals"
+        ]
+    ].rename(
+        columns={
+            "weather_name": "Weather Condition",
+            "observation_count": "Number of Observations",
+            "average_rentals": "Average Hourly Rentals"
+        }
+    )
+
+    st.dataframe(
+        weather_table,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Number of Observations": st.column_config.NumberColumn(
+                format="%d"
+            ),
+            "Average Hourly Rentals": st.column_config.NumberColumn(
+                format="%.2f"
+            )
+        }
+    )
+
+    # Catatan keterbatasan data yang menyesuaikan filter.
+    extreme_count = weather.loc[
+        weather["weathersit"] == 4,
+        "observation_count"
+    ].sum()
+
+    st.caption(
+        f"Note: Extreme weather (Heavy Rain / Snow) has "
+        f"{int(extreme_count):,} observations under the current filters. "
+        "Interpret its average cautiously because the number of "
+        "observations may be limited."
+    )
+
+    # Insight berdasarkan kategori cuaca dengan rata-rata tertinggi.
     best_weather = weather.loc[
         weather["average_rentals"].idxmax()
     ]
@@ -597,10 +727,17 @@ if not weather.empty:
         <b>Key Insight</b><br>
         Kondisi cuaca dengan rata-rata penyewaan tertinggi
         pada data yang difilter adalah
-        <b>{best_weather['weather_name']}</b>,
-        dengan rata-rata
-        <b>{best_weather['average_rentals']:,.0f}</b>
-        penyewaan per hari.
+        <b>{best_weather['weather_name']}</b>, dengan rata-rata
+        <b>{best_weather['average_rentals']:,.2f}</b>
+        sepeda per jam.
+
+        <br><br>
+
+        Kategori cuaca ekstrem memiliki
+        <b>{int(extreme_count):,}</b>
+        observasi pada filter saat ini.
+        Jumlah observasi yang terbatas perlu diperhatikan
+        dalam menginterpretasikan hasil perbandingan.
         </div>
         """,
         unsafe_allow_html=True
@@ -625,7 +762,10 @@ st.markdown(
 )
 
 seasonal = (
-    filtered_day.groupby("season_name", as_index=False)
+    filtered_day.groupby(
+        "season_name",
+        as_index=False
+    )
     .agg(
         casual=("casual", "mean"),
         registered=("registered", "mean")
@@ -651,7 +791,12 @@ fig_season = px.bar(
         "registered": COLORS["blue"]
     },
     category_orders={
-        "season_name": ["Spring", "Summer", "Fall", "Winter"]
+        "season_name": [
+            "Spring",
+            "Summer",
+            "Fall",
+            "Winter"
+        ]
     },
     labels={
         "season_name": "Season"
@@ -663,9 +808,13 @@ fig_season.update_layout(
     margin=dict(l=20, r=20, t=30, b=20)
 )
 
-st.plotly_chart(fig_season, use_container_width=True)
+st.plotly_chart(
+    fig_season,
+    use_container_width=True
+)
 
 if not seasonal.empty:
+
     best_season = seasonal.loc[
         seasonal["registered"].idxmax()
     ]
@@ -709,20 +858,34 @@ tab1, tab2 = st.tabs([
 ])
 
 with tab1:
+
     st.dataframe(
         filtered_day[
-            ["dteday", "season_name", "weather_name",
-             "casual", "registered", "cnt"]
+            [
+                "dteday",
+                "season_name",
+                "weather_name",
+                "casual",
+                "registered",
+                "cnt"
+            ]
         ],
         use_container_width=True,
         hide_index=True
     )
 
 with tab2:
+
     st.dataframe(
         filtered_hour[
-            ["dteday", "hr", "day_type",
-             "casual", "registered", "cnt"]
+            [
+                "dteday",
+                "hr",
+                "day_type",
+                "casual",
+                "registered",
+                "cnt"
+            ]
         ],
         use_container_width=True,
         hide_index=True
